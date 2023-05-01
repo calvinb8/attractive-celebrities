@@ -7,6 +7,9 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.feature_selection import SelectKBest
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_validate 
+from sklearn.linear_model import Lasso
+from sklearn.linear_model import LassoCV
+from sklearn.linear_model import Perceptron
 
 def main():
     
@@ -33,6 +36,21 @@ def main():
     X_train = features.transform(X_train)
     X_test = features.transform(X_test)
     
+    #lasso
+    lasso_cv=LassoCV(alphas=[0.01, 0.1, 1, 10, 100], cv=5)
+    lasso_cv.fit(X_train, y_train)
+    print("Best alpha parameter:")
+    print(lasso_cv.alpha_)
+    
+    bestAlpha=lasso_cv.alpha_
+    
+    lasso=Lasso(alpha=bestAlpha)
+    lasso.fit(X_train, y_train)
+    selected_features = np.abs(lasso_cv.coef_) > 0
+    #X_train=X_train*lasso_cv.coef_
+    #X_test=X_test*lasso_cv.coef_
+    X_train = X_train[:, selected_features]
+    X_test = X_test[:, selected_features]
     
     # logistic regression
     model = LogisticRegression(max_iter=500, random_state=0)
@@ -47,6 +65,15 @@ def main():
     print('SVM Score:')
     print(model.score(X_test, y_test))
     print()
+    
+    #perceptron
+    model = Perceptron(random_state=0)
+    model.fit(X_train, y_train)
+    print('perceptron Score:')
+    print(model.score(X_test, y_test))
+    print()
+    
+    """
     
     #parameter tunning for decision tree
     
@@ -63,10 +90,13 @@ def main():
     print("best parameters for decision tree: ")
     print(max(scores, key=scores.get))
     
-    #max depth: 20, min leaf sample: 80
+    """
+    
+    #max depth: 20, min leaf sample: 80 (no lasso)
+    #max depth: 20, min leaf sample: 20 (lasso)
     
     bestDepth=20
-    bestLeafSample=80
+    bestLeafSample=20
     
     # decision tree
     model = DecisionTreeClassifier(max_depth=bestDepth, min_samples_leaf=bestLeafSample, random_state=0)
@@ -79,9 +109,10 @@ def main():
     estimators = [
         ('lr', LogisticRegression(max_iter=500, random_state=0)),
         ('svm', svm.LinearSVC()),
+        ('percptron', Perceptron(random_state=0)),
         ('dt', DecisionTreeClassifier(max_depth=bestDepth, min_samples_leaf=bestLeafSample,random_state=0))
     ]
-    model = StackingClassifier(estimators=estimators)
+    model = StackingClassifier(estimators=estimators, max_iter=500)
     model.fit(X_train, y_train)
     print('Stacked Score:')
     print(model.score(X_test, y_test))
@@ -96,20 +127,3 @@ def main():
     
 if __name__ == "__main__":
     main()
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
